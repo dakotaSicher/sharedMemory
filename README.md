@@ -3,7 +3,7 @@
 #shared memory homework assignment
 #
 #compile: gcc producer.c -pthread -lrt -o producer
-#        #gcc consumer.c -pthread -lrt -o producer
+#        gcc consumer.c -pthread -lrt -o producer
 #
 #run:     ./producer & ./consumer
 #
