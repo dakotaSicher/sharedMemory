@@ -23,5 +23,5 @@ struct shmbuf {
 //    char   buf[BUF_SIZE];   /* Data being transferred */
     int    buf[BUF_SIZE];
     int    in, out;
-    bool   prod;
+    bool   full, empty;
 };

@@ -32,38 +32,27 @@ int main()
     if (shmp == MAP_FAILED)
         errExit("mmap");
 
-    /* Wait until peer says that it has finished accessing
-       the shared memory. */
-
+// wait for producer to produce the first items
     if (sem_wait(&shmp->sem2) == -1)
         errExit("sem_wait");
 
-    while(shmp->prod){
+    while(!(shmp->empty)){
 
         int num = shmp->buf[shmp->out];
         printf("The square of %i = %i \n", num, num*num);
 
         shmp->out = ((shmp->out)+1) % BUF_SIZE;
+        shmp->full = false;   //if an item has been consumed the queue is not full
+        if(shmp->out == shmp->in) shmp->empty = true; //if the queue is not full and out == in then it must be empty
 
-    /* Copy data into the shared memory object. */
+        if(shmp->empty){ // only after the queue is empty do we want to pass back to the producer
+            if (sem_post(&shmp->sem1) == -1) // inform produce that the consumer is done
+                errExit("sem_post");
 
-    //shmp->cnt = len;
-    //memcpy(&shmp->buf, string, len);
-
-    /* Tell peer that it can now access shared memory. */
-
-        if (sem_post(&shmp->sem1) == -1)
-            errExit("sem_post");
-
-        if (sem_wait(&shmp->sem2) == -1)
-            errExit("sem_wait");
+            if (sem_wait(&shmp->sem2) == -1) // wait for the producer
+                errExit("sem_wait");
+        }
     }
-
-    /* Write modified data in shared memory to standard output. */
-
-//    write(STDOUT_FILENO, &shmp->buf, len);
-//    write(STDOUT_FILENO, "\n", 1);
-
 
 
     exit(EXIT_SUCCESS);

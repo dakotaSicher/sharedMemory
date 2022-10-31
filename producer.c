@@ -15,6 +15,8 @@ int main()
     /* Create shared memory object and set its size to the size
        of our structure. */
 
+//    shm_unlink("/shmem");
+
     int fd = shm_open("/shmem", O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1)
         errExit("shm_open");
@@ -41,38 +43,32 @@ int main()
     //set buf in and out to begining of array
     shmp->in = 0;
     shmp->out= 0;
-    shmp->prod = 1;
+    shmp->empty = true;
+    shmp->full = false;
+    const int total = 5;
 
-    for(int i=1; i<5; ++i){
+    for(int i=1; i<=total; ++i){
         //add value to next element
         shmp->buf[shmp->in] = i;
         shmp->in = ((shmp->in)+ 1) % BUF_SIZE;
+        //if an item has just been produced than the queue cannot be empty
+        shmp->empty = false;
+        //if the queue is not empty and in == out then it must be full
+        if (shmp->in == shmp->out) shmp->full = true;
 
-
-    /* Post 'sem2' to tell the peer that it can now
-       access the modified data in shared memory. */
-
-        if (sem_post(&shmp->sem2) == -1)
-            errExit("sem_post");
-
+        if(shmp->full || i == total){ // pass to consumer if the queue is full OR the producer is done producing
+            if (sem_post(&shmp->sem2) == -1) // inform consumer that producer is done accessing memory
+                errExit("sem_post");
 //        printf("Producer waits\n");
-    /* Wait for 'sem1' to be posted by peer before touching
-       shared memory. */
 
-        if (sem_wait(&shmp->sem1) == -1)
-            errExit("sem_wait");
+            if (sem_wait(&shmp->sem1) == -1) // wait on consumer to finish
+                errExit("sem_wait");
 //        printf("producer proceeds\n");
-    }
-    shmp->prod = 0;
 
+        }
+    }
     if (sem_post(&shmp->sem2) == -1)
         errExit("sem_post");
-
-/*    // Convert data in shared memory into upper case. 
-
-    for (int j = 0; j < shmp->cnt; j++)
-        shmp->buf[j] = toupper((unsigned char) shmp->buf[j]);
-*/
 
     /* Unlink the shared memory object. Even if the peer process
        is still using the object, this is okay. The object will
